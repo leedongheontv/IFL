@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사주원국 조회</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            display: none;
+        }
+        .ganji-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            margin-bottom: 20px;
+            direction: rtl;
+        }
+        .ganji-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 10px;
+            direction: ltr;
+        }
+        .ganji-box {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            text-align: center;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 5px;
+            font-size: 24px;
+            background-color: #f8f9fa;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
+        .ganji-label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        .daewoon-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            margin-top: 20px;
+            direction: ltr;
+        }
+        .daewoon-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 10px;
+        }
+        .daewoon-box {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            text-align: center;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            margin: 5px;
+            font-size: 24px;
+            background-color: #f8f9fa;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
+        .daewoon-count {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 상단: 제목 + 버튼 가로 배치 -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div style="font-size:1.7rem; font-weight:bold; color:#d32f2f; letter-spacing:-1px; white-space:nowrap;">
+                IFL 만세력
+            </div>
+            <div>
+                <button id="saveSajuBtn" class="btn btn-outline-secondary btn-sm" title="사주 저장">💾 저장</button>
+                <button id="loadSajuBtn" class="btn btn-outline-secondary btn-sm ms-2" title="저장된 사주 조회">📂 조회</button>
+                <button id="recentSajuBtn" class="btn btn-outline-secondary btn-sm ms-2" title="최근 조회">🕑 최근</button>
+                <button id="calendarBtn" class="btn btn-outline-secondary btn-sm ms-2" title="달력 보기">📅 달력</button>
+            </div>
+        </div>
+
+        <!-- 입력 폼: 라벨 삭제, 한 줄로 정렬, 버튼명 '조회'로 변경 -->
+        <form id="sajuForm" class="mb-4">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <select class="form-control form-control-sm" id="gender" required style="min-width:60px;">
+                        <option value="M">남자</option>
+                        <option value="F" selected>여자</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <select class="form-control form-control-sm" id="calendarType" required style="min-width:60px;">
+                        <option value="solar">양력</option>
+                        <option value="lunar">음력</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <input type="text" class="form-control form-control-sm" id="datetimeInput" maxlength="12" placeholder="YYYYMMDDHHmm" required style="width:120px;">
+                </div>
+                <div class="col-auto">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="unknownHour">
+                        <label class="form-check-label" for="unknownHour" style="font-size:0.95em;">시 모름</label>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">조회</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- 저장 메모 입력 모달 -->
+        <div id="saveModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+          <div style="background:#fff; padding:20px; border-radius:10px; min-width:300px;">
+            <div>이름 <input id="saveMemo" maxlength="30" style="width:200px;"></div>
+            <div class="mt-2 text-end">
+              <button id="saveModalOk" class="btn btn-primary btn-sm">저장</button>
+              <button id="saveModalCancel" class="btn btn-secondary btn-sm">취소</button>
+            </div>
+          </div>
+        </div>
+        <!-- 저장 리스트 모달 -->
+        <div id="loadModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+          <div style="background:#fff; padding:20px; border-radius:10px; min-width:350px; max-height:80vh; overflow-y:auto;">
+            <div style="font-weight:bold; margin-bottom:10px;">저장된 사주</div>
+            <div id="loadList"></div>
+            <div class="mt-2 text-end">
+              <button id="loadModalClose" class="btn btn-secondary btn-sm">닫기</button>
+            </div>
+          </div>
+        </div>
+        <!-- 최근 리스트 모달 -->
+        <div id="recentModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+          <div style="background:#fff; padding:20px; border-radius:10px; min-width:350px; max-height:80vh; overflow-y:auto;">
+            <div style="font-weight:bold; margin-bottom:10px;">최근 조회한 사주</div>
+            <div id="recentList"></div>
+            <div class="mt-2 text-end">
+              <button id="recentModalClose" class="btn btn-secondary btn-sm">닫기</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="result" class="result-box">           
+            <!-- 사주원국 정보 윗줄에 텍스트 정보 추가 -->
+            <div id="sajuInfoBar" style="text-align:center; font-size:1.05em; margin-bottom:10px; color:#333; font-weight:500;">
+                <span id="infoSolarDate"></span>
+                <span id="infoLunarDate" style="margin-left:10px;"></span>
+                <span id="infoAge" style="margin-left:10px;"></span>
+                <span id="infoGender" style="margin-left:10px;"></span>
+            </div>
+            <div class="ganji-container">
+                <div class="ganji-column">
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="yearGanSibsin"></span> </div>
+                    <div class="ganji-box" id="yearGanji"></div>
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="yearJiSibsin"></span> </div>
+                    <div style="font-size:12px; color:#666; height:18px;"> <span id="yearJijanggan"></span> </div>
+                    <div style="font-size:12px; color:#b36; height:18px;"> <span id="yearShinsal"></span> </div>
+                    <div style="font-size:12px; color:#36b; height:18px;"> <span id="yearUnseong"></span> </div>
+                </div>
+                <div class="ganji-column">
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="monthGanSibsin"></span> </div>
+                    <div class="ganji-box" id="monthGanji"></div>
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="monthJiSibsin"></span> </div>
+                    <div style="font-size:12px; color:#666; height:18px;"> <span id="monthJijanggan"></span> </div>
+                    <div style="font-size:12px; color:#b36; height:18px;"> <span id="monthShinsal"></span> </div>
+                    <div style="font-size:12px; color:#36b; height:18px;"> <span id="monthUnseong"></span> </div>
+                </div>
+                <div class="ganji-column">
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="dayGanSibsin"></span> </div>
+                    <div class="ganji-box" id="dayGanji"></div>
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="dayJiSibsin"></span> </div>
+                    <div style="font-size:12px; color:#666; height:18px;"> <span id="dayJijanggan"></span> </div>
+                    <div style="font-size:12px; color:#b36; height:18px;"> <span id="dayShinsal"></span> </div>
+                    <div style="font-size:12px; color:#36b; height:18px;"> <span id="dayUnseong"></span> </div>
+                </div>
+                <div class="ganji-column">
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="hourGanSibsin"></span> </div>
+                    <div class="ganji-box" id="hourGanji"></div>
+                    <div style="font-size:13px; color:#888; height:18px;"> <span id="hourJiSibsin"></span> </div>
+                    <div style="font-size:12px; color:#666; height:18px;"> <span id="hourJijanggan"></span> </div>
+                    <div style="font-size:12px; color:#b36; height:18px;"> <span id="hourShinsal"></span> </div>
+                    <div style="font-size:12px; color:#36b; height:18px;"> <span id="hourUnseong"></span> </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="daewoon-container" id="daewoonContainer">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 십신 계산 함수 (전역 선언)
+        function getSibsin(dayGan, target, isGan) {
+            if (!dayGan || !target || target.length !== 1) return '';
+            const sibsinGan = {
+                '甲': ['비견','겁재','식신','상관','편재','정재','편관','정관','편인','정인'],
+                '乙': ['겁재','비견','상관','식신','정재','편재','정관','편관','정인','편인'],
+                '丙': ['편인','정인','비견','겁재','식신','상관','편재','정재','편관','정관'],
+                '丁': ['정인','편인','겁재','비견','상관','식신','정재','편재','정관','편관'],
+                '戊': ['편관','정관','편인','정인','비견','겁재','식신','상관','편재','정재'],
+                '己': ['정관','편관','정인','편인','겁재','비견','상관','식신','정재','편재'],
+                '庚': ['편재','정재','편관','정관','편인','정인','비견','겁재','식신','상관'],
+                '辛': ['정재','편재','정관','편관','정인','편인','겁재','비견','상관','식신'],
+                '壬': ['식신','상관','편재','정재','편관','정관','편인','정인','비견','겁재'],
+                '癸': ['상관','식신','정재','편재','정관','편관','정인','편인','겁재','비견'],
+            };
+            const sibsinJi = {
+                '甲': ['정인','정재','비견','겁재','편재','식신','상관','정재','편관','정관','편재','편인'],
+                '乙': ['편인','편재','겁재','비견','정재','상관','식신','편재','정관','편관','정재','정인'],
+                '丙': ['정관','상관','편인','정인','식신','비견','겁재','상관','편재','정재','식신','편관'],
+                '丁': ['편관','식신','정인','편인','상관','겁재','비견','식신','정재','편재','상관','정관'],
+                '戊': ['정재','겁재','편관','정관','비견','편인','정인','겁재','식신','상관','비견','편재'],
+                '己': ['편재','비견','편관','정관','겁재','정인','편인','비견','상관','식신','겁재','정재'],
+                '庚': ['상관','정인','편재','정재','편인','편관','정관','정인','비견','겁재','편인','식신'],
+                '辛': ['식신','편인','정재','편재','정인','정관','편관','편인','겁재','비견','정인','상관'],
+                '壬': ['겁재','정관','식신','상관','편관','편재','정재','정관','편인','정인','편관','비견'],
+                '癸': ['비견','편관','상관','식신','정관','정재','편재','편관','정인','편인','정관','겁재'],
+            };
+            const ganList = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+            const jiList = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+            if (isGan) {
+                if (!target || ganList.indexOf(target) === -1) return '';
+                return sibsinGan[dayGan][ganList.indexOf(target)];
+            } else {
+                if (!target || jiList.indexOf(target) === -1) return '';
+                return sibsinJi[dayGan][jiList.indexOf(target)];
+            }
+        }
+
+        // 페이지 로드시 datetimeInput에 현재 날짜/시간 자동 입력
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const yyyy = now.getFullYear().toString();
+            const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+            const dd = now.getDate().toString().padStart(2, '0');
+            const hh = now.getHours().toString().padStart(2, '0');
+            const min = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('datetimeInput').value = `${yyyy}${mm}${dd}${hh}${min}`;
+            // 폼 자동 제출
+            setTimeout(() => {
+                document.getElementById('sajuForm').dispatchEvent(new Event('submit', {cancelable: true}));
+            }, 100); // 약간의 딜레이로 렌더링 보장
+        });
+
+        // datetimeInput에서 년,월,일,시,분 추출 함수
+        function getDateTimeParts() {
+            const datetimeStr = document.getElementById('datetimeInput').value.trim();
+            return {
+                year: parseInt(datetimeStr.slice(0, 4), 10),
+                month: parseInt(datetimeStr.slice(4, 6), 10),
+                day: parseInt(datetimeStr.slice(6, 8), 10),
+                hour: parseInt(datetimeStr.slice(8, 10), 10),
+                minute: parseInt(datetimeStr.slice(10, 12), 10)
+            };
+        }
+
+        document.getElementById('sajuForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const unknown_hour = document.getElementById('unknownHour').checked;
+            const datetimeStr = document.getElementById('datetimeInput').value.trim();
+
+            if (unknown_hour) {
+                // 시 모름: 8자리(YYYYMMDD)만 허용
+                if (!/^[0-9]{8}$/.test(datetimeStr)) {
+                    alert('입력오류: 시 모름일 때는 8자리(YYYYMMDD)로 입력하세요.');
+                    return;
+                }
+            } else {
+                // 시 모름 해제: 12자리(YYYYMMDDHHmm)만 허용
+                if (!/^[0-9]{12}$/.test(datetimeStr)) {
+                    alert('입력오류: 12자리(YYYYMMDDHHmm)로 입력하세요.');
+                    return;
+                }
+            }
+
+            const year = parseInt(datetimeStr.slice(0, 4), 10);
+            const month = parseInt(datetimeStr.slice(4, 6), 10);
+            const day = parseInt(datetimeStr.slice(6, 8), 10);
+            let hour = 0, minute = 0;
+            if (!unknown_hour) {
+                hour = parseInt(datetimeStr.slice(8, 10), 10);
+                minute = parseInt(datetimeStr.slice(10, 12), 10);
+            }
+
+            const gender = document.getElementById('gender').value;
+            const is_lunar = document.getElementById('calendarType').value === 'lunar';
+
+            try {
+                const response = await fetch('/get_saju', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ year, month, day, hour, minute, gender, is_lunar, unknown_hour }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data && typeof data === 'object' && !data.error) {
+                    document.getElementById('result').style.display = 'block';
+                    document.getElementById('yearGanji').textContent = data.year_ganji;
+                    document.getElementById('monthGanji').textContent = data.month_ganji;
+                    document.getElementById('dayGanji').textContent = data.day_ganji;
+                    document.getElementById('hourGanji').textContent = data.hour_ganji;
+                    document.getElementById('yearGanSibsin').textContent = data.sibsin.year_gan;
+                    document.getElementById('yearJiSibsin').textContent = data.sibsin.year_ji;
+                    document.getElementById('monthGanSibsin').textContent = data.sibsin.month_gan;
+                    document.getElementById('monthJiSibsin').textContent = data.sibsin.month_ji;
+                    document.getElementById('dayGanSibsin').textContent = data.sibsin.day_gan;
+                    document.getElementById('dayJiSibsin').textContent = data.sibsin.day_ji;
+                    document.getElementById('hourGanSibsin').textContent = (data.sibsin && data.sibsin.hour_gan) ? data.sibsin.hour_gan : '';
+                    document.getElementById('hourJiSibsin').textContent = (data.sibsin && data.sibsin.hour_ji) ? data.sibsin.hour_ji : '';
+
+                    console.log('sibsin:', data.sibsin);
+
+                    // 대운수 표시
+                    const daewoonContainer = document.getElementById('daewoonContainer');
+                    daewoonContainer.innerHTML = '';
+                    const total = data.daewoon.length;
+                    const baseAge = data.daewoon[0].daewoon_count;
+                    const reversed = data.daewoon.slice().reverse();
+                    // 대운 라인 생성 및 클릭 이벤트 부여
+                    reversed.forEach((daewoon, idx) => {
+                        const column = document.createElement('div');
+                        column.className = 'daewoon-column';
+                        let ageLabel = '';
+                        let blockIdx = null;
+                        if (idx === total - 1) {
+                            ageLabel = '대운';
+                        } else if (idx === total - 2) {
+                            ageLabel = baseAge;
+                            blockIdx = 0;
+                        } else if (idx < total - 2) {
+                            ageLabel = baseAge + (total - 2 - idx) * 10;
+                            blockIdx = (total - 2 - idx);
+                        }
+                        // 십신 계산 (대운 간지, 일간 기준)
+                        let ganSibsin = '', jiSibsin = '';
+                        if (daewoon.ganji && data.day_ganji) {
+                            const dayGan = data.day_ganji[0];
+                            const gan = daewoon.ganji[0];
+                            const ji = daewoon.ganji[1];
+                            ganSibsin = getSibsin(dayGan, gan, true);
+                            jiSibsin = getSibsin(dayGan, ji, false);
+                        }
+                        column.innerHTML = `
+                            <div class="daewoon-age" style="font-weight:bold; cursor:pointer; margin-bottom:2px;">${ageLabel}</div>
+                            <div style="font-size:13px; color:#888; height:18px;">${ganSibsin}</div>
+                            <div class="daewoon-box" style="cursor:pointer;">${daewoon.ganji}</div>
+                            <div style="font-size:13px; color:#888; height:18px;">${jiSibsin}</div>
+                        `;
+                        // 클릭 이벤트: 해당 blockIdx의 년운 라인만 출력
+                        if (blockIdx !== null) {
+                            column.addEventListener('click', () => {
+                                showYearunBlock(blockIdx);
+                                // 년운 표가 갱신된 후, 해당 년운 라인의 첫 번째 칸의 년간을 추출해서 월운 자동 출력
+                                setTimeout(() => {
+                                    const yearunTable = document.getElementById('yearunTable');
+                                    if (yearunTable) {
+                                        const yearCells = yearunTable.querySelectorAll('div[style*="min-width: 80px"]');
+                                        if (yearCells.length > 0) {
+                                            // 첫 번째 칸(왼쪽)이 blockIdx에 해당하는 년운
+                                            const firstCell = yearCells[0];
+                                            const yearGanDiv = firstCell.querySelectorAll('div')[2];
+                                            if (yearGanDiv) {
+                                                const yearGan = yearGanDiv.textContent.trim();
+                                                showMonthGanji(yearGan);
+                                            }
+                                        }
+                                    }
+                                }, 50);
+                            });
+                        }
+                        daewoonContainer.appendChild(column);
+                    });
+
+                    // 년운 표를 한 줄만 출력하는 함수
+                    function showYearunBlock(blockIdx) {
+                        // 기존 년운 표/월간지 표 삭제
+                        const oldTable = document.getElementById('yearunTable');
+                        if (oldTable) oldTable.remove();
+                        const oldMonthTable = document.getElementById('monthganjiTable');
+                        if (oldMonthTable) oldMonthTable.remove();
+                        const yearunTable = document.createElement('div');
+                        yearunTable.id = 'yearunTable';
+                        yearunTable.style.display = 'flex';
+                        yearunTable.style.flexDirection = 'column';
+                        yearunTable.style.alignItems = 'center';
+                        yearunTable.style.marginTop = '20px';
+                        // 년주(년간지) 기준
+                        const yearGanji = data.year_ganji;
+                        const gan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+                        const ji = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+                        const ganStart = gan.indexOf(yearGanji[0]);
+                        const jiStart = ji.indexOf(yearGanji[1]);
+                        const birthYear = getDateTimeParts().year;
+                        const cells = [];
+                        for (let col = 0; col < 10; col++) {
+                            const idx = blockIdx * 10 + col;
+                            const age = baseAge + idx;
+                            const year = birthYear + age - 1;
+                            const yearGan = gan[(ganStart + age - 1) % 10];
+                            const yearJi = ji[(jiStart + age - 1) % 12];
+                            // 십신 계산
+                            let ganSibsin = '', jiSibsin = '';
+                            if (data.day_ganji) {
+                                const dayGan = data.day_ganji[0];
+                                ganSibsin = getSibsin(dayGan, yearGan, true);
+                                jiSibsin = getSibsin(dayGan, yearJi, false);
+                            }
+                            const cell = document.createElement('div');
+                            cell.style.border = '1px solid #ccc';
+                            cell.style.padding = '4px 8px';
+                            cell.style.margin = '2px';
+                            cell.style.fontSize = '13px';
+                            cell.style.minWidth = '80px';
+                            cell.style.textAlign = 'center';
+                            cell.innerHTML = `
+                                <div style="font-weight:bold; font-size:15px; margin-bottom:2px;">${year}</div>
+                                <div style="font-size:13px; color:#888;">${ganSibsin}</div>
+                                <div style="font-size:18px;">${yearGan}</div>
+                                <div style="font-size:18px;">${yearJi}</div>
+                                <div style="font-size:13px; color:#888;">${jiSibsin}</div>
+                                <div style="font-size:13px; color:#666; margin-top:2px;">${age}</div>
+                            `;
+                            // 월운 클릭 이벤트
+                            cell.style.cursor = 'pointer';
+                            cell.addEventListener('click', () => {
+                                // 클릭된 칸의 간지(년간) 추출
+                                const clickedGanji = (yearGan + yearJi);
+                                const clickedYearGan = clickedGanji[0];
+                                showMonthGanji(clickedYearGan);
+                            });
+                            cells.push(cell);
+                        }
+                        // 오른쪽부터 왼쪽으로 출력
+                        const rowDiv = document.createElement('div');
+                        rowDiv.style.display = 'flex';
+                        rowDiv.style.justifyContent = 'center';
+                        cells.reverse().forEach(cell => rowDiv.appendChild(cell));
+                        yearunTable.appendChild(rowDiv);
+                        daewoonContainer.parentNode.appendChild(yearunTable);
+                    }
+
+                    // 월간지 표 출력 함수
+                    function showMonthGanji(yearGan) {
+                        // 기존 월운 표 삭제
+                        let oldMonthTable = document.getElementById('monthganjiTable');
+                        if (oldMonthTable) oldMonthTable.remove();
+                        const monthTable = document.createElement('div');
+                        monthTable.id = 'monthganjiTable';
+                        monthTable.style.display = 'flex';
+                        monthTable.style.justifyContent = 'center';
+                        monthTable.style.marginTop = '10px';
+                        monthTable.style.background = '#f9f9e3'; // 임시 배경색(확인용)
+                        const monthGanjiMap = {
+                          '甲': ['乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉','甲戌','乙亥','丙자'],
+                          '己': ['乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉','甲戌','乙亥','丙자'],
+                          '乙': ['丁丑','戊寅','己卯','庚辰','辛巳','壬午','癸未','甲申','乙酉','丙戌','丁亥','戊자'],
+                          '庚': ['丁丑','戊寅','己卯','庚辰','辛巳','壬午','癸未','甲申','乙酉','丙戌','丁亥','戊자'],
+                          '丙': ['己丑','庚寅','辛卯','壬辰','癸巳','甲午','乙未','丙申','丁酉','戊戌','己亥','庚자'],
+                          '辛': ['己丑','庚寅','辛卯','壬辰','癸巳','甲午','乙未','丙申','丁酉','戊戌','己亥','庚자'],
+                          '丁': ['辛丑','壬寅','癸卯','甲辰','乙巳','丙午','丁未','戊申','己酉','庚戌','辛亥','壬자'],
+                          '壬': ['辛丑','壬寅','癸卯','甲辰','乙巳','丙午','丁未','戊申','己酉','庚戌','辛亥','壬자'],
+                          '戊': ['癸丑','甲寅','乙卯','丙辰','丁巳','戊午','己未','庚申','辛酉','壬戌','癸亥','甲자'],
+                          '癸': ['癸丑','甲寅','乙卯','丙辰','丁巳','戊午','己未','庚申','辛酉','壬戌','癸亥','甲자'],
+                        };
+                        const ganjiArr = monthGanjiMap[yearGan] || [];
+                        const cells = [];
+                        for (let i = 0; i < 12; i++) {
+                            const ganji = ganjiArr[i] || '';
+                            const gan = ganji[0] || '';
+                            const ji = ganji[1] || '';
+                            let ganSibsin = '', jiSibsin = '';
+                            if (data.day_ganji) {
+                                const dayGan = data.day_ganji[0];
+                                ganSibsin = getSibsin(dayGan, gan, true);
+                                jiSibsin = getSibsin(dayGan, ji, false);
+                            }
+                            const cell = document.createElement('div');
+                            cell.style.border = '1px solid #aaa';
+                            cell.style.padding = '4px 8px';
+                            cell.style.margin = '2px';
+                            cell.style.fontSize = '13px';
+                            cell.style.minWidth = '60px';
+                            cell.style.textAlign = 'center';
+                            cell.style.overflow = 'hidden';
+                            cell.style.textOverflow = 'ellipsis';
+                            cell.style.whiteSpace = 'nowrap';
+                            // 간지를 세로로 출력
+                            cell.innerHTML = `
+                                <div style="font-weight:bold; font-size:15px; margin-bottom:2px;">${i+1}월</div>
+                                <div style="font-size:13px; color:#888;">${ganSibsin}</div>
+                                <div style="font-size:18px;">${gan}</div>
+                                <div style="font-size:18px;">${ji}</div>
+                                <div style="font-size:13px; color:#888;">${jiSibsin}</div>
+                            `;
+                            // 달력 모달 이벤트
+                            cell.style.cursor = 'pointer';
+                            cell.addEventListener('click', () => {
+                                showCalendarModal(daewoonContainer, i+1, year);
+                            });
+                            cells.push(cell);
+                        }
+                        // 오른쪽에서 왼쪽으로 출력
+                        cells.reverse().forEach(cell => monthTable.appendChild(cell));
+                        // 년운 표 바로 아래에 추가
+                        const yearunTable = document.getElementById('yearunTable');
+                        if (yearunTable && yearunTable.parentNode) {
+                            yearunTable.parentNode.insertBefore(monthTable, yearunTable.nextSibling);
+                        } else {
+                            daewoonContainer.parentNode.appendChild(monthTable);
+                        }
+                    }
+
+                    // 페이지 로드시 현재 나이대의 년운 라인만 출력
+                    const now = new Date();
+                    const birthYear = getDateTimeParts().year;
+                    const currentAge = now.getFullYear() - birthYear + 1;
+                    let blockIdx = Math.floor((currentAge - baseAge) / 10);
+                    if (blockIdx < 0) blockIdx = 0;
+                    if (blockIdx > 9) blockIdx = 9;
+                    showYearunBlock(blockIdx);
+
+                    // 현재 년도의 월운을 자동 출력
+                    (function showCurrentYearMonthUn() {
+                        // 년운 라인에서 현재 년도에 해당하는 칸의 년간 추출
+                        const yearGanji = data.year_ganji;
+                        const gan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+                        const ji = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+                        const ganStart = gan.indexOf(yearGanji[0]);
+                        const jiStart = ji.indexOf(yearGanji[1]);
+                        const idx = currentAge - baseAge;
+                        if (idx >= 0 && idx < 100) {
+                            const yearGan = gan[(ganStart + currentAge - 1) % 10];
+                            showMonthGanji(yearGan);
+                        }
+                    })();
+
+                    // [추가] 사주원국 갱신 후 월운 표도 항상 최신으로 갱신
+                    setTimeout(() => {
+                        const yearunTable = document.getElementById('yearunTable');
+                        if (yearunTable) {
+                            const yearCells = yearunTable.querySelectorAll('div[style*="min-width: 80px"]');
+                            if (yearCells.length > 0) {
+                                // yearCells는 왼→오 순서이므로, 마지막 칸이 최신
+                                const lastCell = yearCells[yearCells.length - 1];
+                                // 년간 추출 (위에서 3번째 div)
+                                const yearGanDiv = lastCell.querySelectorAll('div')[2];
+                                if (yearGanDiv) {
+                                    const yearGan = yearGanDiv.textContent.trim();
+                                    showMonthGanji(yearGan);
+                                }
+                            }
+                        }
+                    }, 100);
+
+                    // 최근 사주 자동 저장 함수
+                    addRecentSaju();
+
+                    // 지장간 매핑 테이블
+                    const jijiToJijanggan = {
+                        '子': '壬 - 癸',
+                        '丑': '癸辛己',
+                        '寅': '戊丙甲',
+                        '卯': '甲 - 乙',
+                        '辰': '乙癸戊',
+                        '巳': '戊庚丙',
+                        '午': '丙己丁',
+                        '未': '丁乙己',
+                        '申': '戊壬庚',
+                        '酉': '庚 - 辛',
+                        '戌': '辛丁戊',
+                        '亥': '戊甲壬'
+                    };
+                    // 지장간 할당 함수
+                    function setJijanggan() {
+                        const yearJi = (data.year_ganji && data.year_ganji[1]) ? data.year_ganji[1] : '';
+                        const monthJi = (data.month_ganji && data.month_ganji[1]) ? data.month_ganji[1] : '';
+                        const dayJi = (data.day_ganji && data.day_ganji[1]) ? data.day_ganji[1] : '';
+                        const hourJi = (data.hour_ganji && data.hour_ganji[1]) ? data.hour_ganji[1] : '';
+                        document.getElementById('yearJijanggan').textContent = jijiToJijanggan[yearJi] || '';
+                        document.getElementById('monthJijanggan').textContent = jijiToJijanggan[monthJi] || '';
+                        document.getElementById('dayJijanggan').textContent = jijiToJijanggan[dayJi] || '';
+                        document.getElementById('hourJijanggan').textContent = jijiToJijanggan[hourJi] || '';
+                    }
+                    setJijanggan();
+
+                    // 12신살 규칙 테이블 및 함수
+                    const shinsalTable = {
+                        '巳酉丑': ['巳','지살','午','년살','未','월살','申','망신','酉','장성','戌','반안','亥','역마','子','육해','丑','화개','寅','겁살','卯','재살','辰','천살'],
+                        '寅午戌': ['寅','지살','卯','년살','辰','월살','巳','망신','午','장성','未','반안','申','역마','酉','육해','戌','화개','亥','겁살','子','재살','丑','천살'],
+                        '亥卯未': ['亥','지살','子','년살','丑','월살','寅','망신','卯','장성','辰','반안','巳','역마','午','육해','未','화개','申','겁살','酉','재살','戌','천살'],
+                        '申子辰': ['申','지살','酉','년살','戌','월살','亥','망신','子','장성','丑','반안','寅','역마','卯','육해','辰','화개','巳','겁살','午','재살','未','천살']
+                    };
+                    function getShinsalMap(yearJi) {
+                        let key = '';
+                        if ('巳酉丑'.includes(yearJi)) key = '巳酉丑';
+                        else if ('寅午戌'.includes(yearJi)) key = '寅午戌';
+                        else if ('亥卯未'.includes(yearJi)) key = '亥卯未';
+                        else if ('申子辰'.includes(yearJi)) key = '申子辰';
+                        else return {};
+                        const arr = shinsalTable[key];
+                        const map = {};
+                        for (let i = 0; i < arr.length; i += 2) {
+                            map[arr[i]] = arr[i+1];
+                        }
+                        return map;
+                    }
+                    function setShinsal() {
+                        const yearJi = (data.year_ganji && data.year_ganji[1]) ? data.year_ganji[1] : '';
+                        const monthJi = (data.month_ganji && data.month_ganji[1]) ? data.month_ganji[1] : '';
+                        const dayJi = (data.day_ganji && data.day_ganji[1]) ? data.day_ganji[1] : '';
+                        const hourJi = (data.hour_ganji && data.hour_ganji[1]) ? data.hour_ganji[1] : '';
+                        const shinsalMap = getShinsalMap(yearJi);
+                        document.getElementById('yearShinsal').textContent = shinsalMap[yearJi] || '';
+                        document.getElementById('monthShinsal').textContent = shinsalMap[monthJi] || '';
+                        document.getElementById('dayShinsal').textContent = shinsalMap[dayJi] || '';
+                        document.getElementById('hourShinsal').textContent = shinsalMap[hourJi] || '';
+                    }
+                    setShinsal();
+
+                    // 12운성 규칙 테이블
+                    const unseongTable = {
+                        '甲': ['亥','子','丑','寅','卯','辰','巳','午','未','申','酉','戌'],
+                        '乙': ['午','巳','辰','卯','寅','丑','子','亥','戌','酉','申','未'],
+                        '丙': ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'],
+                        '丁': ['酉','申','未','午','巳','辰','卯','寅','丑','子','亥','戌'],
+                        '戊': ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'],
+                        '己': ['酉','申','未','午','巳','辰','卯','寅','丑','子','亥','戌'],
+                        '庚': ['巳','午','未','申','酉','戌','亥','子','丑','寅','卯','辰'],
+                        '辛': ['子','亥','戌','酉','申','未','午','巳','辰','卯','寅','丑'],
+                        '壬': ['申','酉','戌','亥','子','丑','寅','卯','辰','巳','午','未'],
+                        '癸': ['卯','寅','丑','子','亥','戌','酉','申','未','午','巳','辰']
+                    };
+                    const unseongNames = ['장생','목욕','관대','건록','제왕','쇠','병','사','묘','절','태','양'];
+
+                    function getUnseong(dayGan, ji) {
+                        if (!dayGan || !ji) return '';
+                        const jiList = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+                        const jiIndex = jiList.indexOf(ji);
+                        if (jiIndex === -1) return '';
+                        const unseongOrder = unseongTable[dayGan];
+                        if (!unseongOrder) return '';
+                        const unseongIndex = unseongOrder.indexOf(ji);
+                        if (unseongIndex === -1) return '';
+                        return unseongNames[unseongIndex];
+                    }
+
+                    function setUnseong() {
+                        const dayGan = (data.day_ganji && data.day_ganji[0]) ? data.day_ganji[0] : '';
+                        const yearJi = (data.year_ganji && data.year_ganji[1]) ? data.year_ganji[1] : '';
+                        const monthJi = (data.month_ganji && data.month_ganji[1]) ? data.month_ganji[1] : '';
+                        const dayJi = (data.day_ganji && data.day_ganji[1]) ? data.day_ganji[1] : '';
+                        const hourJi = (data.hour_ganji && data.hour_ganji[1]) ? data.hour_ganji[1] : '';
+                        
+                        document.getElementById('yearUnseong').textContent = getUnseong(dayGan, yearJi);
+                        document.getElementById('monthUnseong').textContent = getUnseong(dayGan, monthJi);
+                        document.getElementById('dayUnseong').textContent = getUnseong(dayGan, dayJi);
+                        document.getElementById('hourUnseong').textContent = getUnseong(dayGan, hourJi);
+                    }
+
+                    // 사주원국 조회 성공 시 12운성 설정
+                    if (response.ok) {
+                        setShinsal();
+                        setUnseong(); // 12운성 설정 추가
+                        // 사주 정보 바 채우기 (오류 방지: 값 없을 때 빈 문자열, DOM 체크)
+                        const infoSolarDate = document.getElementById('infoSolarDate');
+                        const infoLunarDate = document.getElementById('infoLunarDate');
+                        const infoAge = document.getElementById('infoAge');
+                        const infoGender = document.getElementById('infoGender');
+
+                        if (infoSolarDate) infoSolarDate.textContent = '양력: ' + (typeof data.solar_date === 'string' ? data.solar_date : '');
+                        if (infoLunarDate) infoLunarDate.textContent = '음력: ' + (typeof data.lunar_date === 'string' ? data.lunar_date : '');
+
+                        // 나이 계산 (solar_date가 'YYYY년 MM월 DD일' 형식이 아닐 때도 대비)
+                        let age = '';
+                        if (typeof data.solar_date === 'string' && /^\d{4}/.test(data.solar_date)) {
+                            const birthYear = parseInt(data.solar_date.slice(0,4), 10);
+                            if (!isNaN(birthYear)) {
+                                const now = new Date();
+                                age = now.getFullYear() - birthYear + 1;
+                            }
+                        }
+                        if (infoAge) infoAge.textContent = '나이: ' + (age ? age : '');
+
+                        // 성별
+                        let genderText = '';
+                        if (typeof data.gender === 'string') {
+                            genderText = data.gender === 'M' ? '남' : (data.gender === 'F' ? '여' : '');
+                        } else if (document.getElementById('gender')) {
+                            // fallback: 현재 입력값
+                            const gval = document.getElementById('gender').value;
+                            genderText = gval === 'M' ? '남' : (gval === 'F' ? '여' : '');
+                        }
+                        if (infoGender) infoGender.textContent = '성별: ' + genderText;
+                    }
+                } else {
+                    alert(data && data.error ? data.error : '데이터를 찾을 수 없습니다.');
+                    // info bar 초기화
+                    const infoSolarDate = document.getElementById('infoSolarDate');
+                    const infoLunarDate = document.getElementById('infoLunarDate');
+                    const infoAge = document.getElementById('infoAge');
+                    const infoGender = document.getElementById('infoGender');
+                    if (infoSolarDate) infoSolarDate.textContent = '';
+                    if (infoLunarDate) infoLunarDate.textContent = '';
+                    if (infoAge) infoAge.textContent = '';
+                    if (infoGender) infoGender.textContent = '';
+                }
+            } catch (error) {
+                alert('오류가 발생했습니다.');
+                console.error('Error:', error);
+            }
+        });
+
+        document.getElementById('unknownHour').addEventListener('change', function() {
+            const hourInput = document.getElementById('hour');
+            const minuteInput = document.getElementById('minute');
+            if (this.checked) {
+                hourInput.value = 0;
+                minuteInput.value = 0;
+                hourInput.disabled = true;
+                minuteInput.disabled = true;
+            } else {
+                // 시 모름 해제 시 현재 시간 자동입력
+                const now = new Date();
+                hourInput.value = now.getHours();
+                minuteInput.value = now.getMinutes();
+                hourInput.disabled = false;
+                minuteInput.disabled = false;
+            }
+        });
+
+        // 달력 모달 함수
+        function showCalendarModal(parentElem, month, year) {
+            // 기존 모달 삭제
+            let oldModal = document.getElementById('calendarModal');
+            if (oldModal) oldModal.remove();
+            // 달력 생성
+            const modal = document.createElement('div');
+            modal.id = 'calendarModal';
+            modal.style.position = 'fixed';
+            modal.style.left = '0';
+            modal.style.top = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.background = 'rgba(0,0,0,0.3)';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.zIndex = '9999';
+            const calBox = document.createElement('div');
+            calBox.style.background = '#fff';
+            calBox.style.padding = '20px';
+            calBox.style.borderRadius = '10px';
+            calBox.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+            calBox.style.minWidth = '320px';
+            // 달력 헤더
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.style.marginBottom = '10px';
+            header.innerHTML = `<b>${year}년 ${month}월</b>`;
+            // 닫기 버튼
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '닫기';
+            closeBtn.style.marginLeft = '10px';
+            closeBtn.onclick = () => modal.remove();
+            header.appendChild(closeBtn);
+            calBox.appendChild(header);
+            // 달력 표
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            const days = ['일','월','화','수','목','금','토'];
+            let tr = document.createElement('tr');
+            days.forEach(d => {
+                const th = document.createElement('th');
+                th.textContent = d;
+                th.style.border = '1px solid #ccc';
+                th.style.padding = '2px';
+                tr.appendChild(th);
+            });
+            table.appendChild(tr);
+            // 날짜 채우기
+            const firstDay = new Date(year, month-1, 1).getDay();
+            const lastDate = new Date(year, month, 0).getDate();
+            tr = document.createElement('tr');
+            for (let i = 0; i < firstDay; i++) {
+                const td = document.createElement('td');
+                td.innerHTML = '&nbsp;';
+                tr.appendChild(td);
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                if ((tr.children.length) % 7 === 0 && d !== 1) {
+                    table.appendChild(tr);
+                    tr = document.createElement('tr');
+                }
+                const td = document.createElement('td');
+                // 60갑자 계산
+                const ganzhi60 = [
+                    '甲子','乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉',
+                    '甲戌','乙亥','丙子','丁丑','戊寅','己卯','庚辰','辛巳','壬午','癸未',
+                    '甲申','乙酉','丙戌','丁亥','戊子','己丑','庚寅','辛卯','壬辰','癸巳',
+                    '甲午','乙未','丙申','丁酉','戊戌','己亥','庚子','辛丑','壬寅','癸卯',
+                    '甲辰','乙巳','丙午','丁未','戊申','己酉','庚戌','辛亥','壬子','癸丑',
+                    '甲寅','乙卯','丙辰','丁巳','戊午','己未','庚申','辛酉','壬戌','癸亥'
+                ];
+                const baseDate = new Date(1984, 1, 2); // 월 0-indexed
+                const thisDate = new Date(year, month-1, d);
+                const diffDays = Math.floor((thisDate - baseDate) / (1000*60*60*24));
+                let ganzhi = '';
+                if (diffDays >= 0) {
+                    ganzhi = ganzhi60[diffDays % 60];
+                } else {
+                    ganzhi = ganzhi60[(60 + (diffDays % 60)) % 60];
+                }
+                const ganzhiVertical = ganzhi.split('').join('<br>');
+                td.innerHTML = `<div>${d}</div><div style='font-size:11px;color:#888;'>${ganzhiVertical}</div>`;
+                td.style.border = '1px solid #ccc';
+                td.style.padding = '2px';
+                // 날짜 클릭 시 입력란에 반영하고 달력 닫기 및 사주원국 자동 조회
+                td.style.cursor = 'pointer';
+                td.onclick = () => {
+                    // 기존 datetimeInput 값에서 시/분만 추출
+                    const datetimeInput = document.getElementById('datetimeInput');
+                    let val = datetimeInput.value.trim();
+                    let hour = '00', minute = '00';
+                    if (val.length === 12) {
+                        hour = val.slice(8, 10);
+                        minute = val.slice(10, 12);
+                    }
+                    // 새 날짜로 datetimeInput 값 갱신
+                    const mm = month.toString().padStart(2, '0');
+                    const dd = d.toString().padStart(2, '0');
+                    datetimeInput.value = `${year}${mm}${dd}${hour}${minute}`;
+                    modal.remove();
+                    setTimeout(() => {
+                        document.getElementById('sajuForm').dispatchEvent(new Event('submit', {cancelable: true}));
+                    }, 50);
+                };
+                tr.appendChild(td);
+            }
+            while (tr.children.length < 7) {
+                const td = document.createElement('td');
+                td.innerHTML = '&nbsp;';
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+            calBox.appendChild(table);
+            modal.appendChild(calBox);
+            document.body.appendChild(modal);
+        }
+
+        // 사주 저장/조회 기능
+        // 저장 버튼 클릭
+        document.getElementById('saveSajuBtn').onclick = function() {
+            document.getElementById('saveMemo').value = '';
+            document.getElementById('saveModal').style.display = 'flex';
+        };
+        // 저장 모달 취소
+        document.getElementById('saveModalCancel').onclick = function() {
+            document.getElementById('saveModal').style.display = 'none';
+        };
+        // 저장 모달 저장
+        document.getElementById('saveModalOk').onclick = function() {
+            const memo = document.getElementById('saveMemo').value.trim();
+            if (memo.length === 0) {
+                alert('메모를 입력하세요.');
+                return;
+            }
+            // 현재 입력값 저장
+            const sajuData = {
+                memo,
+                savedAt: new Date().toISOString(),
+                gender: document.getElementById('gender').value,
+                calendarType: document.getElementById('calendarType').value,
+                datetime: document.getElementById('datetimeInput').value,
+                unknownHour: document.getElementById('unknownHour').checked
+            };
+            let list = JSON.parse(localStorage.getItem('sajuList') || '[]');
+            list.unshift(sajuData); // 최신이 위로
+            localStorage.setItem('sajuList', JSON.stringify(list));
+            document.getElementById('saveModal').style.display = 'none';
+            alert('저장되었습니다!');
+        };
+        // 조회 버튼 클릭
+        document.getElementById('loadSajuBtn').onclick = function() {
+            const list = JSON.parse(localStorage.getItem('sajuList') || '[]');
+            const loadList = document.getElementById('loadList');
+            loadList.innerHTML = '';
+            if (list.length === 0) {
+                loadList.innerHTML = '<div style="color:#888;">저장된 사주가 없습니다.</div>';
+            } else {
+                list.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.style.border = '1px solid #ccc';
+                    div.style.borderRadius = '6px';
+                    div.style.padding = '8px';
+                    div.style.marginBottom = '6px';
+                    div.style.cursor = 'pointer';
+                    div.style.background = '#f8f9fa';
+                    div.innerHTML = `<b>${item.memo}</b> <span style="color:#888;font-size:12px;">(${item.savedAt.slice(0,16).replace('T',' ')})</span><br>
+                        <span style="font-size:12px;">${item.gender==='M'?'남':'여'}, ${item.calendarType==='lunar'?'음력':'양력'}, ${item.datetime}, ${item.unknownHour?'시모름':''}</span>`;
+                    div.onclick = function() {
+                        // 입력값 반영
+                        document.getElementById('gender').value = item.gender;
+                        document.getElementById('calendarType').value = item.calendarType;
+                        document.getElementById('datetimeInput').value = item.datetime;
+                        document.getElementById('unknownHour').checked = item.unknownHour;
+                        // 시모름 체크박스 이벤트 트리거
+                        document.getElementById('unknownHour').dispatchEvent(new Event('change'));
+                        document.getElementById('loadModal').style.display = 'none';
+                        setTimeout(() => {
+                            document.getElementById('sajuForm').dispatchEvent(new Event('submit', {cancelable: true}));
+                        }, 100);
+                    };
+                    loadList.appendChild(div);
+                });
+            }
+            document.getElementById('loadModal').style.display = 'flex';
+        };
+        // 조회 모달 닫기
+        document.getElementById('loadModalClose').onclick = function() {
+            document.getElementById('loadModal').style.display = 'none';
+        };
+
+        // 최근 버튼/모달 기능
+        document.getElementById('recentSajuBtn').onclick = function() {
+            const list = JSON.parse(localStorage.getItem('recentSajuList') || '[]');
+            const recentList = document.getElementById('recentList');
+            recentList.innerHTML = '';
+            if (list.length === 0) {
+                recentList.innerHTML = '<div style="color:#888;">최근 조회한 사주가 없습니다.</div>';
+            } else {
+                list.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.style.border = '1px solid #ccc';
+                    div.style.borderRadius = '6px';
+                    div.style.padding = '8px';
+                    div.style.marginBottom = '6px';
+                    div.style.cursor = 'pointer';
+                    div.style.background = '#f8f9fa';
+                    div.innerHTML = `<span style="color:#888;font-size:12px;">${item.savedAt.slice(0,16).replace('T',' ')}</span><br>
+                        <span style="font-size:12px;">${item.gender==='M'?'남':'여'}, ${item.calendarType==='lunar'?'음력':'양력'}, ${item.datetime}, ${item.unknownHour?'시모름':''}</span>`;
+                    div.onclick = function() {
+                        document.getElementById('gender').value = item.gender;
+                        document.getElementById('calendarType').value = item.calendarType;
+                        document.getElementById('datetimeInput').value = item.datetime;
+                        document.getElementById('unknownHour').checked = item.unknownHour;
+                        document.getElementById('unknownHour').dispatchEvent(new Event('change'));
+                        document.getElementById('recentModal').style.display = 'none';
+                        setTimeout(() => {
+                            document.getElementById('sajuForm').dispatchEvent(new Event('submit', {cancelable: true}));
+                        }, 100);
+                    };
+                    recentList.appendChild(div);
+                });
+            }
+            document.getElementById('recentModal').style.display = 'flex';
+        };
+        document.getElementById('recentModalClose').onclick = function() {
+            document.getElementById('recentModal').style.display = 'none';
+        };
+
+        // 최근 사주 자동 저장 함수
+        function addRecentSaju() {
+            const recent = {
+                gender: document.getElementById('gender').value,
+                calendarType: document.getElementById('calendarType').value,
+                datetime: document.getElementById('datetimeInput').value,
+                unknownHour: document.getElementById('unknownHour').checked,
+                savedAt: new Date().toISOString()
+            };
+            let list = JSON.parse(localStorage.getItem('recentSajuList') || '[]');
+            // 중복 제거(동일 입력값)
+            list = list.filter(item =>
+                !(item.gender === recent.gender &&
+                  item.calendarType === recent.calendarType &&
+                  item.datetime === recent.datetime &&
+                  item.unknownHour === recent.unknownHour)
+            );
+            list.unshift(recent);
+            if (list.length > 50) list = list.slice(0, 50);
+            localStorage.setItem('recentSajuList', JSON.stringify(list));
+        }
+
+        // 달력 버튼 클릭 시 현재 월의 달력 모달 띄우기
+        document.getElementById('calendarBtn').onclick = function() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const daewoonContainer = document.getElementById('daewoonContainer');
+            showCalendarModal(daewoonContainer, month, year);
+        };
+    </script>
+</body>
+</html> 
